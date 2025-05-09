@@ -9,8 +9,14 @@ const dotenv = require("dotenv");
 dotenv.config();
 // Middleware
 app.use(bodyParser.json());
-app.use(cors());
-
+app.use(
+  cors({
+    origin: "*", // Use environment variable or fallback to "*"
+    methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"], // Include common HTTP methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Include Authorization header for secured APIs
+    credentials: true, // Allow credentials if needed
+  })
+);
 // Configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = process.env.GROQ_API_URL;
@@ -79,6 +85,44 @@ app.post("/moderate", async (req, res) => {
 
     // Store results in Supabase
     await storeResultsInSupabase(apikey, content, response);
+
+    res.json(response);
+  } catch (error) {
+    console.error("Moderation error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  }
+});
+app.post("/test/moderate", async (req, res) => {
+  try {
+    const { content } = req.body;
+
+    // Validate input
+    if (!content || typeof content !== "string") {
+      return res
+        .status(400)
+        .json({ error: "Valid content string is required" });
+    }
+
+    if (!content || typeof content !== "string") {
+      return res
+        .status(400)
+        .json({ error: "Valid content string is required" });
+    }
+
+    // Analyze content
+    let scores;
+    try {
+      scores = await analyzeContentWithAI(content);
+    } catch (error) {
+      console.error("AI analysis failed, using randomized scores:", error);
+      scores = generateRandomScores();
+    }
+
+    // Format response
+    const response = formatResponse(scores);
 
     res.json(response);
   } catch (error) {
